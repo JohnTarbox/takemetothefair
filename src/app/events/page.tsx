@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Search, Filter } from "lucide-react";
 import { EventList } from "@/components/events/event-list";
 import prisma from "@/lib/prisma";
+import { parseJsonArray } from "@/types";
 
 interface SearchParams {
   query?: string;
@@ -68,7 +69,10 @@ async function getCategories() {
       select: { categories: true },
     });
     const categories = new Set<string>();
-    events.forEach((e) => e.categories.forEach((c) => categories.add(c)));
+    events.forEach((e) => {
+      const parsed = parseJsonArray(e.categories);
+      parsed.forEach((c) => categories.add(c));
+    });
     return Array.from(categories).sort();
   } catch {
     return [];

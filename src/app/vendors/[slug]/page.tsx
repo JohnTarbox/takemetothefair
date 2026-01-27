@@ -56,11 +56,12 @@ export default async function VendorDetailPage({ params }: Props) {
     notFound();
   }
 
+  const now = Date.now();
   const upcomingEvents = vendor.eventVendors.filter(
-    (ev) => new Date(ev.event.endDate) >= new Date()
+    (ev) => new Date(ev.event.endDate).getTime() >= now
   );
   const pastEvents = vendor.eventVendors.filter(
-    (ev) => new Date(ev.event.endDate) < new Date()
+    (ev) => new Date(ev.event.endDate).getTime() < now
   );
 
   return (

@@ -3,7 +3,6 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { createSlug } from "@/lib/utils";
-import { UserRole } from "@prisma/client";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
         email,
         passwordHash,
         name,
-        role: role as UserRole,
+        role,
       },
     });
 

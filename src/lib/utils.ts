@@ -46,3 +46,19 @@ export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
   return text.slice(0, length).trim() + "...";
 }
+
+/**
+ * Safely parse a date value, returning null if invalid
+ */
+export function safeParseDate(value: unknown): Date | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(value as string | number);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Check if a value is a valid date
+ */
+export function isValidDate(value: unknown): boolean {
+  return safeParseDate(value) !== null;
+}

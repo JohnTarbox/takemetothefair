@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { formatDateRange, formatPrice } from "@/lib/utils";
+import { formatDateRange, formatPrice, safeParseDate } from "@/lib/utils";
 import prisma from "@/lib/prisma";
 import { parseJsonArray } from "@/types";
 import type { Metadata } from "next";
@@ -179,13 +179,15 @@ export default async function EventDetailPage({ params }: Props) {
                   <p className="font-medium text-gray-900">
                     {formatDateRange(event.startDate, event.endDate)}
                   </p>
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                    <Clock className="w-4 h-4" />
-                    {new Date(event.startDate).toLocaleTimeString("en-US", {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </p>
+                  {safeParseDate(event.startDate) && (
+                    <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
+                      <Clock className="w-4 h-4" />
+                      {safeParseDate(event.startDate)!.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  )}
                 </div>
               </div>
 

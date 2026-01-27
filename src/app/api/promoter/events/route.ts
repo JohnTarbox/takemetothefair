@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
-import { createSlug } from "@/lib/utils";
+import { createSlug, isValidDate } from "@/lib/utils";
 
 export async function GET() {
   const session = await auth();
@@ -65,6 +65,14 @@ export async function POST(request: NextRequest) {
       ticketPriceMax,
       imageUrl,
     } = body;
+
+    // Validate date inputs
+    if (!isValidDate(startDate) || !isValidDate(endDate)) {
+      return NextResponse.json(
+        { error: "Invalid date format for startDate or endDate" },
+        { status: 400 }
+      );
+    }
 
     let slug = createSlug(name);
     const existingEvent = await prisma.event.findUnique({ where: { slug } });
