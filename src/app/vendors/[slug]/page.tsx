@@ -3,8 +3,11 @@ import Link from "next/link";
 import { Store, Globe, CheckCircle, Calendar, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { formatDateRange } from "@/lib/utils";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { isFavorited } from "@/lib/favorites";
 import { parseJsonArray } from "@/types";
 import type { Metadata } from "next";
 
@@ -50,11 +53,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VendorDetailPage({ params }: Props) {
   const { slug } = await params;
-  const vendor = await getVendor(slug);
+  const [vendor, session] = await Promise.all([getVendor(slug), auth()]);
 
   if (!vendor) {
     notFound();
   }
+
+  const favorited = session?.user
+    ? await isFavorited(session.user.id, "vendor", vendor.id)
+    : false;
 
   const now = Date.now();
   const upcomingEvents = vendor.eventVendors.filter(
@@ -185,6 +192,16 @@ export default async function VendorDetailPage({ params }: Props) {
         </main>
 
         <aside className="space-y-6">
+          <Card>
+            <CardContent className="p-6">
+              <FavoriteButton
+                type="vendor"
+                id={vendor.id}
+                initialFavorited={favorited}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <h3 className="font-semibold text-gray-900">Contact & Links</h3>

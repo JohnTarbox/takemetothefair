@@ -12,8 +12,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { formatDateRange, formatPrice, safeParseDate } from "@/lib/utils";
 import prisma from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { isFavorited } from "@/lib/favorites";
 import { parseJsonArray } from "@/types";
 import type { Metadata } from "next";
 
@@ -66,11 +69,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { slug } = await params;
-  const event = await getEvent(slug);
+  const [event, session] = await Promise.all([getEvent(slug), auth()]);
 
   if (!event) {
     notFound();
   }
+
+  const favorited = session?.user
+    ? await isFavorited(session.user.id, "event", event.id)
+    : false;
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -229,6 +236,12 @@ export default async function EventDetailPage({ params }: Props) {
                   </Button>
                 </a>
               )}
+
+              <FavoriteButton
+                type="event"
+                id={event.id}
+                initialFavorited={favorited}
+              />
             </CardContent>
           </Card>
 

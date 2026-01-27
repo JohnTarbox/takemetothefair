@@ -24,6 +24,7 @@ export type UserRole = "ADMIN" | "PROMOTER" | "VENDOR" | "USER";
 export type EventStatus = "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
 export type VenueStatus = "ACTIVE" | "INACTIVE";
 export type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type FavoritableType = "event" | "venue" | "vendor";
 
 export type EventWithRelations = Event & {
   promoter: Promoter & { user: Pick<User, "name" | "email"> };
