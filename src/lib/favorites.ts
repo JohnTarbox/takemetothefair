@@ -18,6 +18,17 @@ export async function isFavorited(
   return !!favorite;
 }
 
+export async function getUserFavoriteIds(
+  userId: string,
+  favoritableType: FavoritableType
+): Promise<string[]> {
+  const favorites = await prisma.userFavorite.findMany({
+    where: { userId, favoritableType },
+    select: { favoritableId: true },
+  });
+  return favorites.map((f) => f.favoritableId);
+}
+
 export async function toggleFavorite(
   userId: string,
   favoritableType: FavoritableType,

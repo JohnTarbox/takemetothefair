@@ -1,14 +1,26 @@
 import Link from "next/link";
-import { MapPin, Users, Calendar } from "lucide-react";
+import { MapPin, Users, Calendar, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
 import { parseJsonArray } from "@/types";
+import { auth } from "@/lib/auth";
+import { getUserFavoriteIds } from "@/lib/favorites";
 
-async function getVenues() {
+interface SearchParams {
+  favorites?: string;
+}
+
+async function getVenues(favoriteIds?: string[]) {
   try {
+    const where: Record<string, unknown> = { status: "ACTIVE" };
+
+    if (favoriteIds) {
+      where.id = { in: favoriteIds };
+    }
+
     const venues = await prisma.venue.findMany({
-      where: { status: "ACTIVE" },
+      where,
       include: {
         _count: {
           select: {
@@ -24,8 +36,22 @@ async function getVenues() {
   }
 }
 
-export default async function VenuesPage() {
-  const venues = await getVenues();
+export default async function VenuesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const params = await searchParams;
+  const session = await auth();
+  const isLoggedIn = !!session?.user?.id;
+
+  let favoriteIds: string[] | undefined;
+  if (isLoggedIn && params.favorites === "true") {
+    favoriteIds = await getUserFavoriteIds(session.user.id, "venue");
+  }
+
+  const venues = await getVenues(favoriteIds);
+  const showingFavorites = params.favorites === "true";
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -36,9 +62,36 @@ export default async function VenuesPage() {
         </p>
       </div>
 
+      {isLoggedIn && (
+        <div className="mb-6">
+          {showingFavorites ? (
+            <Link
+              href="/venues"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-pink-100 text-pink-700 hover:bg-pink-200 transition-colors"
+            >
+              <Heart className="w-4 h-4 fill-current" />
+              Showing My Favorites
+              <span className="text-xs">(click to show all)</span>
+            </Link>
+          ) : (
+            <Link
+              href="/venues?favorites=true"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <Heart className="w-4 h-4" />
+              My Favorites
+            </Link>
+          )}
+        </div>
+      )}
+
       {venues.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">No venues available at this time.</p>
+          <p className="text-gray-500">
+            {showingFavorites
+              ? "You haven't favorited any venues yet."
+              : "No venues available at this time."}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,19 +1,26 @@
 import Link from "next/link";
-import { Store, CheckCircle } from "lucide-react";
+import { Store, CheckCircle, Heart } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/prisma";
 import { parseJsonArray } from "@/types";
+import { auth } from "@/lib/auth";
+import { getUserFavoriteIds } from "@/lib/favorites";
 
 interface SearchParams {
   type?: string;
+  favorites?: string;
 }
 
-async function getVendors(searchParams: SearchParams) {
+async function getVendors(searchParams: SearchParams, favoriteIds?: string[]) {
   const where: Record<string, unknown> = {};
 
   if (searchParams.type) {
     where.vendorType = searchParams.type;
+  }
+
+  if (favoriteIds) {
+    where.id = { in: favoriteIds };
   }
 
   try {
@@ -57,10 +64,29 @@ export default async function VendorsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const session = await auth();
+  const isLoggedIn = !!session?.user?.id;
+
+  let favoriteIds: string[] | undefined;
+  if (isLoggedIn && params.favorites === "true") {
+    favoriteIds = await getUserFavoriteIds(session.user.id, "vendor");
+  }
+
   const [vendors, vendorTypes] = await Promise.all([
-    getVendors(params),
+    getVendors(params, favoriteIds),
     getVendorTypes(),
   ]);
+
+  const showingFavorites = params.favorites === "true";
+
+  // Build URL preserving type filter when toggling favorites
+  const buildUrl = (options: { favorites?: boolean; type?: string }) => {
+    const urlParams = new URLSearchParams();
+    if (options.type) urlParams.set("type", options.type);
+    if (options.favorites) urlParams.set("favorites", "true");
+    const queryString = urlParams.toString();
+    return queryString ? `/vendors?${queryString}` : "/vendors";
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -77,7 +103,7 @@ export default async function VendorsPage({
             <h3 className="font-medium text-gray-900 mb-3">Filter by Type</h3>
             <div className="space-y-2">
               <Link
-                href="/vendors"
+                href={buildUrl({ favorites: showingFavorites })}
                 className={`block px-3 py-2 rounded-lg text-sm ${
                   !params.type
                     ? "bg-blue-50 text-blue-700 font-medium"
@@ -89,7 +115,7 @@ export default async function VendorsPage({
               {vendorTypes.map((type) => (
                 <Link
                   key={type}
-                  href={`/vendors?type=${encodeURIComponent(type)}`}
+                  href={buildUrl({ type, favorites: showingFavorites })}
                   className={`block px-3 py-2 rounded-lg text-sm ${
                     params.type === type
                       ? "bg-blue-50 text-blue-700 font-medium"
@@ -100,13 +126,34 @@ export default async function VendorsPage({
                 </Link>
               ))}
             </div>
+
+            {isLoggedIn && (
+              <>
+                <hr className="my-4 border-gray-200" />
+                <Link
+                  href={buildUrl({ type: params.type, favorites: !showingFavorites })}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                    showingFavorites
+                      ? "bg-pink-50 text-pink-700 font-medium"
+                      : "text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${showingFavorites ? "fill-current" : ""}`} />
+                  My Favorites
+                </Link>
+              </>
+            )}
           </div>
         </aside>
 
         <main className="lg:col-span-3">
           {vendors.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500">No vendors found.</p>
+              <p className="text-gray-500">
+                {showingFavorites
+                  ? "You haven't favorited any vendors yet."
+                  : "No vendors found."}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

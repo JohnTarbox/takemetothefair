@@ -1,18 +1,21 @@
 import { Suspense } from "react";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Heart } from "lucide-react";
 import { EventList } from "@/components/events/event-list";
 import prisma from "@/lib/prisma";
 import { parseJsonArray } from "@/types";
+import { auth } from "@/lib/auth";
+import { getUserFavoriteIds } from "@/lib/favorites";
 
 interface SearchParams {
   query?: string;
   category?: string;
   state?: string;
   featured?: string;
+  favorites?: string;
   page?: string;
 }
 
-async function getEvents(searchParams: SearchParams) {
+async function getEvents(searchParams: SearchParams, favoriteIds?: string[]) {
   const page = parseInt(searchParams.page || "1");
   const limit = 12;
   const skip = (page - 1) * limit;
@@ -39,6 +42,10 @@ async function getEvents(searchParams: SearchParams) {
 
   if (searchParams.featured === "true") {
     where.featured = true;
+  }
+
+  if (searchParams.favorites === "true" && favoriteIds) {
+    where.id = { in: favoriteIds };
   }
 
   try {
@@ -96,10 +103,12 @@ function EventsFilter({
   categories,
   states,
   searchParams,
+  isLoggedIn,
 }: {
   categories: string[];
   states: string[];
   searchParams: SearchParams;
+  isLoggedIn: boolean;
 }) {
   return (
     <form className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
@@ -166,6 +175,20 @@ function EventsFilter({
         <span className="text-sm text-gray-700">Featured only</span>
       </label>
 
+      {isLoggedIn && (
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            name="favorites"
+            value="true"
+            defaultChecked={searchParams.favorites === "true"}
+            className="rounded border-gray-300 text-pink-600 focus:ring-pink-500"
+          />
+          <Heart className="w-4 h-4 text-pink-500" />
+          <span className="text-sm text-gray-700">My Favorites</span>
+        </label>
+      )}
+
       <button
         type="submit"
         className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
@@ -183,8 +206,16 @@ export default async function EventsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const session = await auth();
+  const isLoggedIn = !!session?.user?.id;
+
+  let favoriteIds: string[] | undefined;
+  if (isLoggedIn && params.favorites === "true") {
+    favoriteIds = await getUserFavoriteIds(session.user.id, "event");
+  }
+
   const [{ events, total, page, limit }, categories, states] =
-    await Promise.all([getEvents(params), getCategories(), getStates()]);
+    await Promise.all([getEvents(params, favoriteIds), getCategories(), getStates()]);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -204,6 +235,7 @@ export default async function EventsPage({
               categories={categories}
               states={states}
               searchParams={params}
+              isLoggedIn={isLoggedIn}
             />
           </Suspense>
         </aside>
