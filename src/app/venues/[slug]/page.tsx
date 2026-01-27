@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { MapPin, Phone, Mail, Globe, Users, Calendar } from "lucide-react";
+import { MapPin, Phone, Mail, Globe, Users, Calendar, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EventList } from "@/components/events/event-list";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
@@ -58,6 +59,8 @@ export default async function VenueDetailPage({ params }: Props) {
   const favorited = session?.user
     ? await isFavorited(session.user.id, "venue", venue.id)
     : false;
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -155,6 +158,15 @@ export default async function VenueDetailPage({ params }: Props) {
                 id={venue.id}
                 initialFavorited={favorited}
               />
+
+              {isAdmin && (
+                <Link href={`/admin/venues/${venue.id}/edit`}>
+                  <Button variant="outline" className="w-full mt-3">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Venue
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
 

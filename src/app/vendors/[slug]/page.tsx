@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Store, Globe, CheckCircle, Calendar, MapPin } from "lucide-react";
+import { Store, Globe, CheckCircle, Calendar, MapPin, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { formatDateRange } from "@/lib/utils";
@@ -62,6 +63,8 @@ export default async function VendorDetailPage({ params }: Props) {
   const favorited = session?.user
     ? await isFavorited(session.user.id, "vendor", vendor.id)
     : false;
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   const now = Date.now();
   const upcomingEvents = vendor.eventVendors.filter(
@@ -199,6 +202,15 @@ export default async function VendorDetailPage({ params }: Props) {
                 id={vendor.id}
                 initialFavorited={favorited}
               />
+
+              {isAdmin && (
+                <Link href={`/admin/vendors/${vendor.id}/edit`}>
+                  <Button variant="outline" className="w-full mt-3">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Vendor
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
 

@@ -8,6 +8,7 @@ import {
   Clock,
   User,
   Store,
+  Pencil,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,8 @@ export default async function EventDetailPage({ params }: Props) {
   const favorited = session?.user
     ? await isFavorited(session.user.id, "event", event.id)
     : false;
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -242,6 +245,15 @@ export default async function EventDetailPage({ params }: Props) {
                 id={event.id}
                 initialFavorited={favorited}
               />
+
+              {isAdmin && (
+                <Link href={`/admin/events/${event.id}/edit`}>
+                  <Button variant="outline" className="w-full mt-3">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit Event
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
 
