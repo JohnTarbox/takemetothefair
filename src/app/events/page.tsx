@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Search, Filter, Heart } from "lucide-react";
-import { EventList } from "@/components/events/event-list";
+import { EventsView } from "@/components/events/events-view";
 import prisma from "@/lib/prisma";
 import { parseJsonArray } from "@/types";
 import { auth } from "@/lib/auth";
@@ -13,9 +13,18 @@ interface SearchParams {
   featured?: string;
   favorites?: string;
   page?: string;
+  view?: string;
+}
+
+type ViewMode = "cards" | "table" | "calendar";
+
+function parseView(view?: string): ViewMode {
+  if (view === "table" || view === "calendar") return view;
+  return "cards";
 }
 
 async function getEvents(searchParams: SearchParams, favoriteIds?: string[]) {
+  const viewMode = parseView(searchParams.view);
   const page = parseInt(searchParams.page || "1");
   const limit = 12;
   const skip = (page - 1) * limit;
@@ -49,17 +58,22 @@ async function getEvents(searchParams: SearchParams, favoriteIds?: string[]) {
   }
 
   try {
+    const isCalendarView = viewMode === "calendar";
+
     const [events, total] = await Promise.all([
-      prisma.event.findMany({
-        where,
-        include: {
-          venue: true,
-          promoter: true,
-        },
-        orderBy: { startDate: "asc" },
-        skip,
-        take: limit,
-      }),
+      isCalendarView
+        ? prisma.event.findMany({
+            where,
+            include: { venue: true, promoter: true },
+            orderBy: { startDate: "asc" },
+          })
+        : prisma.event.findMany({
+            where,
+            include: { venue: true, promoter: true },
+            orderBy: { startDate: "asc" },
+            skip,
+            take: limit,
+          }),
       prisma.event.count({ where }),
     ]);
 
@@ -110,8 +124,19 @@ function EventsFilter({
   searchParams: SearchParams;
   isLoggedIn: boolean;
 }) {
+  const viewMode = parseView(searchParams.view);
+  const clearParams = new URLSearchParams();
+  if (viewMode !== "cards") {
+    clearParams.set("view", viewMode);
+  }
+  const clearHref = `/events${clearParams.toString() ? `?${clearParams.toString()}` : ""}`;
+
   return (
     <form className="bg-white p-4 rounded-lg border border-gray-200 space-y-4">
+      {searchParams.view && (
+        <input type="hidden" name="view" value={searchParams.view} />
+      )}
+
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Search
@@ -189,13 +214,21 @@ function EventsFilter({
         </label>
       )}
 
-      <button
-        type="submit"
-        className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-      >
-        <Filter className="w-4 h-4" />
-        Apply Filters
-      </button>
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <Filter className="w-4 h-4" />
+          Apply Filters
+        </button>
+        <a
+          href={clearHref}
+          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors text-sm flex items-center"
+        >
+          Clear
+        </a>
+      </div>
     </form>
   );
 }
@@ -206,6 +239,7 @@ export default async function EventsPage({
   searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
+  const viewMode = parseView(params.view);
   const session = await auth();
   const isLoggedIn = !!session?.user?.id;
 
@@ -218,6 +252,7 @@ export default async function EventsPage({
     await Promise.all([getEvents(params, favoriteIds), getCategories(), getStates()]);
 
   const totalPages = Math.ceil(total / limit);
+  const isCalendarView = viewMode === "calendar";
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
@@ -243,16 +278,15 @@ export default async function EventsPage({
         <main className="lg:col-span-3">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-sm text-gray-600">
-              Showing {events.length} of {total} events
+              {isCalendarView
+                ? `Showing all ${total} events on calendar`
+                : `Showing ${events.length} of ${total} events`}
             </p>
           </div>
 
-          <EventList
-            events={events}
-            emptyMessage="No events match your filters. Try adjusting your search."
-          />
+          <EventsView events={events} view={viewMode} />
 
-          {totalPages > 1 && (
+          {!isCalendarView && totalPages > 1 && (
             <div className="mt-8 flex justify-center gap-2">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <a
