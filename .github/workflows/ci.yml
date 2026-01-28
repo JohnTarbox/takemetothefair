@@ -72,15 +72,24 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      - name: Setup test database
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: "file:./test.db"
+
       - name: Build application
         run: npm run build
         env:
           DATABASE_URL: "file:./test.db"
+          AUTH_SECRET: "test-secret-for-ci-only"
+          NEXTAUTH_SECRET: "test-secret-for-ci-only"
 
       - name: Run E2E tests
         run: npm run test:e2e -- --project=chromium
         env:
           DATABASE_URL: "file:./test.db"
+          AUTH_SECRET: "test-secret-for-ci-only"
+          NEXTAUTH_SECRET: "test-secret-for-ci-only"
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
